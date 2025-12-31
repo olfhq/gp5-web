@@ -1,4 +1,12 @@
-exports.handler = async (event) => {
+exports.handler = async (event) => 
+    {const sheetUrl = process.env.SHEET_WEBHOOK_URL;
+
+    // NEW: Handle History Requests
+    if (event.httpMethod === 'GET' || event.queryStringParameters.action === 'history') {
+        const res = await fetch(sheetUrl);
+        const data = await res.text();
+        return { statusCode: 200, body: data };
+    }
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
     try {
@@ -63,3 +71,4 @@ exports.handler = async (event) => {
         return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
     }
 };
+
