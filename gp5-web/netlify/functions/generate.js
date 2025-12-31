@@ -1,5 +1,3 @@
-const fetch = require('node-fetch'); // Standard for older Netlify environments
-
 exports.handler = async (event) => {
     // 1. Basic Security
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
@@ -44,7 +42,6 @@ exports.handler = async (event) => {
         const rawText = genData.candidates[0].content.parts[0].text.replace(/```json/g, "").replace(/```/g, "").trim();
 
         // 4. Archive to Sheet (Background Task)
-        // We use fetch without 'await' here to prevent the function from timing out
         if (sheetUrl) {
             fetch(sheetUrl, {
                 method: 'POST',
