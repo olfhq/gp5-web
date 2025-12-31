@@ -41,19 +41,23 @@ exports.handler = async (event) => {
 
         const rawText = genData.candidates[0].content.parts[0].text.replace(/```json/g, "").replace(/```/g, "").trim();
 
-        // 4. Archive to Sheet (Background Task)
+      // 4. Archive to Sheet (Wait for confirmation)
         if (sheetUrl) {
-            fetch(sheetUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ song: body.song, json: rawText }),
-                redirect: "follow"
-            }).catch(e => console.log("Archive failed:", e.message));
+            try {
+                const sheetRes = await fetch(sheetUrl, {
+                    method: 'POST',
+                    // Changing to text/plain avoids the "fetch failed" pre-flight error
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ song: body.song, json: rawText }),
+                    redirect: "follow" 
+                });
+                
+                if (sheetRes.ok) {
+                    console.log("Successfully archived to Sheet");
+                } else {
+                    console.log("Archive returned status:", sheetRes.status);
+                }
+            } catch (e) {
+                console.log("Archive failed:", e.message);
+            }
         }
-
-        return { statusCode: 200, body: JSON.stringify({ json: rawText }) };
-
-    } catch (error) {
-        return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
-    }
-};
