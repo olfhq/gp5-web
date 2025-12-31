@@ -1,11 +1,10 @@
 exports.handler = async (event) => {
-    // 1. Basic Security
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
     try {
         const body = JSON.parse(event.body);
         
-        // Password Check
+        // 1. Security Check
         if (body.password !== process.env.APP_PASSWORD) {
             return { statusCode: 401, body: JSON.stringify({ error: "⛔ INCORRECT PASSWORD" }) };
         }
@@ -14,21 +13,24 @@ exports.handler = async (event) => {
         const sheetUrl = process.env.SHEET_WEBHOOK_URL;
         if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "Server missing API Key" }) };
 
-        // 2. Discover Best Model
+        // 2. Discover Best Model (Simplified for reliability)
         const modelRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
         const modelData = await modelRes.json();
         
-        if (!modelData.models) throw new Error("Could not list models. Check API Key permissions.");
+        if (!modelData.models || modelData.models.length === 0) {
+            throw new Error("No models found. Check your API Key permissions in Google AI Studio.");
+        }
 
-        const validModels = modelData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"));
-        let bestModel = validModels.find(m => m.name.includes("gemini-1.5-flash"))?.name 
-                     || validModels.find(m => m.name.includes("gemini-pro"))?.name 
-                     || validModels[0]?.name;
+        // We find a model that supports 'generateContent'
+        const bestModel = modelData.models.find(m => 
+            m.supportedGenerationMethods.includes("generateContent") && 
+            (m.name.includes("gemini-1.5-flash") || m.name.includes("gemini-pro"))
+        ) || modelData.models[0];
 
-        if (!bestModel) throw new Error("No usable AI models found.");
+        const modelName = bestModel.name; 
 
         // 3. Generate Content
-        const genRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/${bestModel}:generateContent?key=${apiKey}`, {
+        const genRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -41,23 +43,23 @@ exports.handler = async (event) => {
 
         const rawText = genData.candidates[0].content.parts[0].text.replace(/```json/g, "").replace(/```/g, "").trim();
 
-      // 4. Archive to Sheet (Wait for confirmation)
+        // 4. Archive to Sheet (Wait for confirmation to avoid socket errors)
         if (sheetUrl) {
             try {
-                const sheetRes = await fetch(sheetUrl, {
+                await fetch(sheetUrl, {
                     method: 'POST',
-                    // Changing to text/plain avoids the "fetch failed" pre-flight error
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ song: body.song, json: rawText }),
-                    redirect: "follow" 
+                    redirect: "follow"
                 });
-                
-                if (sheetRes.ok) {
-                    console.log("Successfully archived to Sheet");
-                } else {
-                    console.log("Archive returned status:", sheetRes.status);
-                }
             } catch (e) {
-                console.log("Archive failed:", e.message);
+                console.log("Archive background task blipped:", e.message);
             }
         }
+
+        return { statusCode: 200, body: JSON.stringify({ json: rawText }) };
+
+    } catch (error) {
+        return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+    }
+};
