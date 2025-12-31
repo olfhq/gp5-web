@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>L&R Research Tools</title>
+    <title>L&R Research - Cloudflare Pages</title>
     <style>
         /* --- HIGH VISIBILITY THEME --- */
         :root { 
@@ -52,7 +52,6 @@
         input:focus { border-color: var(--accent); }
         #songInput { width: 400px; }
         
-        /* BUTTONS */
         button { 
             padding: 16px 32px; 
             background: var(--accent); 
@@ -78,229 +77,172 @@
             font-weight: 800; 
             font-size: 16px; 
             transition: opacity 0.2s; 
+            border: none;
+            cursor: pointer;
         }
-        .archive-btn:hover { opacity: 0.9; }
 
         /* PEDAL GRID */
         .pedal-grid { display: flex; flex-wrap: wrap; gap: 25px; justify-content: center; max-width: 1400px; }
 
-        /* THE PEDALS (BIG & READABLE) */
         .pedal { 
             background: #252525; 
             border-radius: 12px; 
-            width: 220px; /* Wide Format */
+            width: 220px; 
             padding: 25px; 
             border-top: 8px solid #555; 
             text-align: center; 
             position: relative;
             box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
         }
         .pedal.off { opacity: 0.3; filter: grayscale(100%); }
-        
-        .pedal-name { 
-            font-weight: 900; 
-            font-size: 24px; 
-            margin-bottom: 5px; 
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.6);
-        }
-        
-        .model-name {
-            font-size: 14px;
-            background: rgba(0,0,0,0.3);
-            padding: 4px 8px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            display: inline-block;
-            color: #ddd;
-        }
-
-        /* PARAMETER ROWS */
-        .pedal-val { 
-            font-size: 16px; 
-            color: #fff;     
-            margin-top: 8px; 
-            font-family: monospace; 
-            background: rgba(0,0,0,0.2);
-            padding: 6px 10px;
-            border-radius: 4px;
-            display: flex;
-            justify-content: space-between;
-        }
+        .pedal-name { font-weight: 900; font-size: 24px; margin-bottom: 5px; text-transform: uppercase; }
+        .model-name { font-size: 14px; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; margin-bottom: 20px; display: inline-block; color: #ddd; }
+        .pedal-val { font-size: 16px; color: #fff; margin-top: 8px; font-family: monospace; background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px; display: flex; justify-content: space-between; }
 
         .loading { display: none; color: var(--accent); margin-bottom: 20px; font-size: 20px; font-weight: bold; }
+
+        /* PEDAL COLORS */
+        .pedal.PRE { border-color: #4caf50; } .pedal.DST { border-color: #ff9800; } 
+        .pedal.AMP { border-color: #9e9e9e; width: 280px; } .pedal.CAB { border-color: #8d6e63; }
         
-        /* PEDAL TYPE COLORS */
-        .pedal.PRE { border-color: #4caf50; background: #1b5e20; } 
-        .pedal.DST { border-color: #ff9800; background: #e65100; } 
-        .pedal.AMP { border-color: #9e9e9e; background: #212121; width: 280px; } /* Wide Amp */
-        .pedal.CAB { border-color: #8d6e63; background: #3e2723; } 
-        .pedal.EQ  { border-color: #42a5f5; background: #0d47a1; } 
-        .pedal.MOD { border-color: #ab47bc; background: #4a148c; } 
-        .pedal.DLY { border-color: #26c6da; background: #006064; } 
-        .pedal.REV { border-color: #5c6bc0; background: #1a237e; } 
+        /* HISTORY SECTION */
+        #history-section { margin-top: 50px; width: 100%; max-width: 800px; text-align: center; }
+        #history-list { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; }
     </style>
 </head>
 <body>
 
     <div id="gatekeeper">
-        <h1 style="margin-bottom: 20px;">L&R RESEARCH TOOLS</h1>
+        <h1>L&R RESEARCH</h1>
         <input type="password" id="sitePass" placeholder="Enter Password">
-        <button onclick="unlockSite()" style="margin-top: 15px;">UNLOCK SYSTEM</button>
+        <button onclick="unlockSite()">UNLOCK SYSTEM</button>
     </div>
 
     <div id="app" class="hidden">
         <h1>GP-5 PRESETINATOR</h1>
         
         <div class="control-bar">
-            <input type="text" id="songInput" placeholder="Enter Song or Artist (e.g. Pink Floyd)">
+            <input type="text" id="songInput" placeholder="Enter Song or Artist">
             <button onclick="generatePatch()" id="btn">GENERATE PRESET</button>
             <a href="#" id="sheetLink" target="_blank" class="archive-btn">📂 VIEW ARCHIVE</a>
         </div>
 
         <div class="loading" id="loader">Consulting the Archives...</div>
         
-        <div class="pedal-grid" id="pedalboard">
-            </div>
-        <div id="history-section" style="margin-top: 50px; width: 100%; max-width: 800px; text-align: center;">
-    <h3>Recent Research History</h3>
-    <div id="history-list" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
-        <p>Loading history...</p>
-    </div>
-</div>
+        <div class="pedal-grid" id="pedalboard"></div>
+
+        <div id="history-section">
+            <hr style="border: 0; border-top: 1px solid #333; margin-bottom: 30px;">
+            <h3>RECENT RESEARCH HISTORY</h3>
+            <div id="history-list">Loading history...</div>
+        </div>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        // ⚠️ PASTE YOUR GOOGLE SHEET SHARE LINK HERE ⚠️
+        // --- CONFIG ---
         const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1AlEC91nxYwHsRfuDXJU2FACrGA4C7RF_EURKrGXA4bw/edit?usp=sharing";
-        
-        // Apply link to button
-        if(GOOGLE_SHEET_URL && GOOGLE_SHEET_URL.startsWith("http")) {
-            document.getElementById('sheetLink').href = GOOGLE_SHEET_URL;
-        }
+        if(GOOGLE_SHEET_URL.startsWith("http")) document.getElementById('sheetLink').href = GOOGLE_SHEET_URL;
 
-        // --- UNLOCK LOGIC ---
         function unlockSite() {
             const pass = document.getElementById('sitePass').value;
             if(pass) {
                 localStorage.setItem('gp5_pass', pass);
                 document.getElementById('gatekeeper').classList.add('hidden');
                 document.getElementById('app').classList.remove('hidden');
+                loadHistory();
             }
         }
 
-        // Auto-Unlock if remembered
         if(localStorage.getItem('gp5_pass')) {
             document.getElementById('gatekeeper').classList.add('hidden');
             document.getElementById('app').classList.remove('hidden');
+            window.onload = loadHistory;
         }
 
-        // --- GENERATOR LOGIC ---
         async function generatePatch() {
             const song = document.getElementById('songInput').value;
             const password = localStorage.getItem('gp5_pass'); 
 
-            if(!song) return alert("Please enter a song name.");
+            if(!song) return alert("Enter a song name.");
             
-            document.getElementById('loader').style.display = 'block';
+            const loader = document.getElementById('loader');
+            loader.style.display = 'block';
+            loader.innerText = "Consulting the Archives...";
             document.getElementById('btn').disabled = true;
-            document.getElementById('pedalboard').innerHTML = '';
 
             try {
-                // Call Netlify Function (The Middleman)
-                const response = await fetch('/.netlify/functions/generate', {
+                // CLOUDFLARE ROUTE: /generate
+                const response = await fetch('/generate', {
                     method: 'POST',
                     body: JSON.stringify({ song: song, password: password }) 
                 });
                 
                 const data = await response.json();
-                
-                // If password was wrong on server side
                 if (response.status === 401) {
                     localStorage.removeItem('gp5_pass');
-                    location.reload(); 
-                    throw new Error(data.error);
+                    location.reload();
                 }
 
                 if (data.error) throw new Error(data.error);
                 
-                // Render result
                 renderBoard(JSON.parse(data.json));
+                loader.innerText = "✅ Patch Generated & Archived!";
+                setTimeout(() => { loader.style.display = 'none'; }, 3000);
+                loadHistory();
 
             } catch (e) {
                 alert("Error: " + e.message);
+                loader.style.display = 'none';
             } finally {
-                document.getElementById('loader').style.display = 'none';
                 document.getElementById('btn').disabled = false;
             }
         }
 
-        // --- RENDER LOGIC ---
+        async function loadHistory() {
+            const list = document.getElementById('history-list');
+            try {
+                // CLOUDFLARE ROUTE: /generate
+                const response = await fetch('/generate');
+                const history = await response.json();
+                
+                list.innerHTML = '';
+                history.forEach(item => {
+                    const btn = document.createElement('button');
+                    btn.className = 'archive-btn';
+                    btn.style.padding = '8px 16px';
+                    btn.style.fontSize = '12px';
+                    btn.innerText = item.name;
+                    btn.onclick = () => renderBoard(JSON.parse(item.json));
+                    list.appendChild(btn);
+                });
+            } catch (e) {
+                list.innerHTML = '<p>History temporarily unavailable</p>';
+            }
+        }
+
         function renderBoard(data) {
             const board = document.getElementById('pedalboard');
-            const pedals = [
-                { id: 'PRE', name: 'PRE-AMP', type: 'PRE', params: data.PRE },
-                { id: 'DST', name: 'DISTORTION', type: 'DST', params: data.DST },
-                { id: 'AMP', name: 'AMPLIFIER', type: 'AMP', params: data.AMP },
-                { id: 'CAB', name: 'CABINET', type: 'CAB', params: data.CAB },
-                { id: 'EQ',  name: 'EQ-7', type: 'EQ', params: data.EQ },
-                { id: 'MOD', name: 'MODULATION', type: 'MOD', params: data.MOD },
-                { id: 'DLY', name: 'DELAY', type: 'DLY', params: data.DLY },
-                { id: 'REV', name: 'REVERB', type: 'REV', params: data.REV }
-            ];
+            board.innerHTML = '';
+            const pedalOrder = ['PRE', 'DST', 'AMP', 'CAB', 'EQ', 'MOD', 'DLY', 'REV'];
 
-            pedals.forEach(p => {
+            pedalOrder.forEach(key => {
+                if(!data[key]) return;
+                const p = data[key];
                 const div = document.createElement('div');
-                div.className = `pedal ${p.type} ${p.params.Status === "On" ? '' : 'off'}`;
+                div.className = `pedal ${key} ${p.Status === "On" ? '' : 'off'}`;
                 
-                let html = `
-                    <div class="pedal-name">${p.name}</div>
-                    <div class="model-name">${p.params.Model || "Standard"}</div>
-                `;
+                let html = `<div class="pedal-name">${key}</div>`;
+                html += `<div class="model-name">${p.Model || "Standard"}</div>`;
                 
-                // Loop through params and create nice rows
-                for (const [k, v] of Object.entries(p.params)) {
+                for (const [k, v] of Object.entries(p)) {
                     if(k !== "Status" && k !== "Model") {
                         html += `<div class="pedal-val"><span>${k}</span> <span>${v}</span></div>`;
                     }
                 }
-                
                 div.innerHTML = html;
                 board.appendChild(div);
             });
         }
-        async function loadHistory() {
-    const list = document.getElementById('history-list');
-    try {
-        // We use the same SHEET_WEBHOOK_URL but as a GET request
-        const response = await fetch('/.netlify/functions/generate?action=history');
-        const history = await response.json();
-        
-        list.innerHTML = '';
-        history.forEach(item => {
-            const btn = document.createElement('button');
-            btn.className = 'archive-btn';
-            btn.style.padding = '8px 16px';
-            btn.style.fontSize = '12px';
-            btn.innerText = item.name;
-            btn.onclick = () => renderBoard(JSON.parse(item.json));
-            list.appendChild(btn);
-        });
-    } catch (e) {
-        list.innerHTML = '<p>History temporarily unavailable</p>';
-    }
-}
-
-// Call this when the app unlocks
-if(localStorage.getItem('gp5_pass')) {
-    loadHistory();
-}
     </script>
 </body>
 </html>
-
