@@ -166,6 +166,12 @@
         
         <div class="pedal-grid" id="pedalboard">
             </div>
+        <div id="history-section" style="margin-top: 50px; width: 100%; max-width: 800px; text-align: center;">
+    <h3>Recent Research History</h3>
+    <div id="history-list" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+        <p>Loading history...</p>
+    </div>
+</div>
     </div>
 
     <script>
@@ -268,6 +274,33 @@
                 board.appendChild(div);
             });
         }
+        async function loadHistory() {
+    const list = document.getElementById('history-list');
+    try {
+        // We use the same SHEET_WEBHOOK_URL but as a GET request
+        const response = await fetch('/.netlify/functions/generate?action=history');
+        const history = await response.json();
+        
+        list.innerHTML = '';
+        history.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'archive-btn';
+            btn.style.padding = '8px 16px';
+            btn.style.fontSize = '12px';
+            btn.innerText = item.name;
+            btn.onclick = () => renderBoard(JSON.parse(item.json));
+            list.appendChild(btn);
+        });
+    } catch (e) {
+        list.innerHTML = '<p>History temporarily unavailable</p>';
+    }
+}
+
+// Call this when the app unlocks
+if(localStorage.getItem('gp5_pass')) {
+    loadHistory();
+}
     </script>
 </body>
 </html>
+
