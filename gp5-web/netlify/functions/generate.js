@@ -1,15 +1,19 @@
-export const handler = async (event) => {
+const fetch = require('node-fetch'); // Standard for older Netlify environments
+
+exports.handler = async (event) => {
+    // 1. Basic Security
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
     try {
         const body = JSON.parse(event.body);
         
-        // 1. Security Check
+        // Password Check
         if (body.password !== process.env.APP_PASSWORD) {
             return { statusCode: 401, body: JSON.stringify({ error: "⛔ INCORRECT PASSWORD" }) };
         }
 
         const apiKey = process.env.GEMINI_API_KEY;
+        const sheetUrl = process.env.SHEET_WEBHOOK_URL;
         if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "Server missing API Key" }) };
 
         // 2. Discover Best Model
@@ -18,7 +22,7 @@ export const handler = async (event) => {
         
         if (!modelData.models) throw new Error("Could not list models. Check API Key permissions.");
 
-        const validModels = modelData.models.filter(m => m.supportedGenerationMethods?.includes("generateContent"));
+        const validModels = modelData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent"));
         let bestModel = validModels.find(m => m.name.includes("gemini-1.5-flash"))?.name 
                      || validModels.find(m => m.name.includes("gemini-pro"))?.name 
                      || validModels[0]?.name;
@@ -39,15 +43,15 @@ export const handler = async (event) => {
 
         const rawText = genData.candidates[0].content.parts[0].text.replace(/```json/g, "").replace(/```/g, "").trim();
 
-        // 4. Archive to Sheet (Wait for it to finish to prevent socket errors)
-        const sheetUrl = process.env.SHEET_WEBHOOK_URL;
+        // 4. Archive to Sheet (Background Task)
+        // We use fetch without 'await' here to prevent the function from timing out
         if (sheetUrl) {
-            await fetch(sheetUrl, {
+            fetch(sheetUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({ song: body.song, json: rawText }),
                 redirect: "follow"
-            });
+            }).catch(e => console.log("Archive failed:", e.message));
         }
 
         return { statusCode: 200, body: JSON.stringify({ json: rawText }) };
