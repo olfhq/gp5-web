@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L&R Research - Cloudflare Pages</title>
+    <style>
+        /* --- HIGH VISIBILITY THEME --- */
+        :root { 
+            --bg: #121212; 
+            --panel: #1e1e1e; 
+            --text: #ffffff; 
+            --accent: #4caf50; 
+            --link: #2196f3; 
+        }
+        
+        body { 
+            background: var(--bg); 
+            color: var(--text); 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            padding: 40px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
+        
+        h1 { margin-bottom: 30px; letter-spacing: 2px; text-transform: uppercase; }
+
+        /* GATEKEEPER (LOCK SCREEN) */
+        #gatekeeper { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #111; z-index: 1000; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+        }
+        .hidden { display: none !important; }
+        #sitePass { font-size: 24px; text-align: center; margin-bottom: 20px; padding: 10px; border-radius: 8px; border: 2px solid #444; background: #222; color: white;}
+
+        /* CONTROL BAR */
+        .control-bar { 
+            background: var(--panel); 
+            padding: 30px; 
+            border-radius: 16px; 
+            display: flex; 
+            gap: 15px; 
+            margin-bottom: 50px; 
+            flex-wrap: wrap; 
+            justify-content: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        
+        input { padding: 16px; border-radius: 8px; border: 2px solid #444; background: #2a2a2a; color: white; font-size: 18px; outline: none; }
+        input:focus { border-color: var(--accent); }
+        #songInput { width: 400px; }
+        
+        button { 
+            padding: 16px 32px; 
+            background: var(--accent); 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            font-weight: 800; 
+            font-size: 16px; 
+            cursor: pointer; 
+            letter-spacing: 1px; 
+            transition: transform 0.1s; 
+        }
+        button:active { transform: scale(0.98); }
+        button:disabled { background: #555; cursor: wait; }
+        
+        .archive-btn { 
+            background: var(--link); 
+            text-decoration: none; 
+            display: flex; align-items: center; justify-content: center; 
+            padding: 16px 32px; 
+            border-radius: 8px; 
+            color: white; 
+            font-weight: 800; 
+            font-size: 16px; 
+            transition: opacity 0.2s; 
+            border: none;
+            cursor: pointer;
+        }
+
+        /* PEDAL GRID */
+        .pedal-grid { display: flex; flex-wrap: wrap; gap: 25px; justify-content: center; max-width: 1400px; }
+
+        .pedal { 
+            background: #252525; 
+            border-radius: 12px; 
+            width: 220px; 
+            padding: 25px; 
+            border-top: 8px solid #555; 
+            text-align: center; 
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+        .pedal.off { opacity: 0.3; filter: grayscale(100%); }
+        .pedal-name { font-weight: 900; font-size: 24px; margin-bottom: 5px; text-transform: uppercase; }
+        .model-name { font-size: 14px; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; margin-bottom: 20px; display: inline-block; color: #ddd; }
+        .pedal-val { font-size: 16px; color: #fff; margin-top: 8px; font-family: monospace; background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px; display: flex; justify-content: space-between; }
+
+        .loading { display: none; color: var(--accent); margin-bottom: 20px; font-size: 20px; font-weight: bold; }
+
+        /* PEDAL COLORS */
+        .pedal.PRE { border-color: #4caf50; } .pedal.DST { border-color: #ff9800; } 
+        .pedal.AMP { border-color: #9e9e9e; width: 280px; } .pedal.CAB { border-color: #8d6e63; }
+        
+        /* HISTORY SECTION */
+        #history-section { margin-top: 50px; width: 100%; max-width: 800px; text-align: center; }
+        #history-list { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <div id="gatekeeper">
+        <h1>L&R RESEARCH</h1>
+        <input type="password" id="sitePass" placeholder="Enter Password">
+        <button onclick="unlockSite()">UNLOCK SYSTEM</button>
+    </div>
+
+    <div id="app" class="hidden">
+        <h1>GP-5 PRESETINATOR</h1>
+        
+        <div class="control-bar">
+            <input type="text" id="songInput" placeholder="Enter Song or Artist">
+            <button onclick="generatePatch()" id="btn">GENERATE PRESET</button>
+            <a href="#" id="sheetLink" target="_blank" class="archive-btn">📂 VIEW ARCHIVE</a>
+        </div>
+
+        <div class="loading" id="loader">Consulting the Archives...</div>
+        
+        <div class="pedal-grid" id="pedalboard"></div>
+
+        <div id="history-section">
+            <hr style="border: 0; border-top: 1px solid #333; margin-bottom: 30px;">
+            <h3>RECENT RESEARCH HISTORY</h3>
+            <div id="history-list">Loading history...</div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1AlEC91nxYwHsRfuDXJU2FACrGA4C7RF_EURKrGXA4bw/edit?usp=sharing";
+        if(GOOGLE_SHEET_URL.startsWith("http")) document.getElementById('sheetLink').href = GOOGLE_SHEET_URL;
+
+        function unlockSite() {
+            const pass = document.getElementById('sitePass').value;
+            if(pass) {
+                localStorage.setItem('gp5_pass', pass);
+                document.getElementById('gatekeeper').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                loadHistory();
+            }
+        }
+
+        if(localStorage.getItem('gp5_pass')) {
+            document.getElementById('gatekeeper').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+            window.onload = loadHistory;
+        }
+
+        async function generatePatch() {
+            const song = document.getElementById('songInput').value;
+            const password = localStorage.getItem('gp5_pass'); 
+
+            if(!song) return alert("Enter a song name.");
+            
+            const loader = document.getElementById('loader');
+            loader.style.display = 'block';
+            loader.innerText = "Consulting the Archives...";
+            document.getElementById('btn').disabled = true;
+
+            try {
+                // CLOUDFLARE ROUTE: /generate
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    body: JSON.stringify({ song: song, password: password }) 
+                });
+                
+                const data = await response.json();
+                if (response.status === 401) {
+                    localStorage.removeItem('gp5_pass');
+                    location.reload();
+                }
+
+                if (data.error) throw new Error(data.error);
+                
+                renderBoard(JSON.parse(data.json));
+                loader.innerText = "✅ Patch Generated & Archived!";
+                setTimeout(() => { loader.style.display = 'none'; }, 3000);
+                loadHistory();
+
+            } catch (e) {
+                alert("Error: " + e.message);
+                loader.style.display = 'none';
+            } finally {
+                document.getElementById('btn').disabled = false;
+            }
+        }
+
+        async function loadHistory() {
+            const list = document.getElementById('history-list');
+            try {
+                // CLOUDFLARE ROUTE: /generate
+                const response = await fetch('/generate');
+                const history = await response.json();
+                
+                list.innerHTML = '';
+                history.forEach(item => {
+                    const btn = document.createElement('button');
+                    btn.className = 'archive-btn';
+                    btn.style.padding = '8px 16px';
+                    btn.style.fontSize = '12px';
+                    btn.innerText = item.name;
+                    btn.onclick = () => renderBoard(JSON.parse(item.json));
+                    list.appendChild(btn);
+                });
+            } catch (e) {
+                list.innerHTML = '<p>History temporarily unavailable</p>';
+            }
+        }
+
+        function renderBoard(data) {
+            const board = document.getElementById('pedalboard');
+            board.innerHTML = '';
+            const pedalOrder = ['PRE', 'DST', 'AMP', 'CAB', 'EQ', 'MOD', 'DLY', 'REV'];
+
+            pedalOrder.forEach(key => {
+                if(!data[key]) return;
+                const p = data[key];
+                const div = document.createElement('div');
+                div.className = `pedal ${key} ${p.Status === "On" ? '' : 'off'}`;
+                
+                let html = `<div class="pedal-name">${key}</div>`;
+                html += `<div class="model-name">${p.Model || "Standard"}</div>`;
+                
+                for (const [k, v] of Object.entries(p)) {
+                    if(k !== "Status" && k !== "Model") {
+                        html += `<div class="pedal-val"><span>${k}</span> <span>${v}</span></div>`;
+                    }
+                }
+                div.innerHTML = html;
+                board.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>
