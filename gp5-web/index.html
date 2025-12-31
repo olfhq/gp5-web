@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L&R Research Tools</title>
+    <style>
+        :root { --bg: #1a1a1a; --panel: #2d2d2d; --text: #e0e0e0; --accent: #4caf50; --link: #2196f3; }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        #gatekeeper { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .hidden { display: none !important; }
+        .control-bar { background: var(--panel); padding: 20px; border-radius: 12px; display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; justify-content: center;}
+        input { padding: 12px; border-radius: 6px; border: 1px solid #444; background: #333; color: white; font-size: 16px; }
+        #songInput { width: 300px; } #passInput { width: 150px; text-align: center;} 
+        button { padding: 12px 24px; background: var(--accent); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        button:disabled { background: #555; }
+        .archive-btn { background: var(--link); text-decoration: none; display: flex; align-items: center; justify-content: center; padding: 12px 24px; border-radius: 6px; color: white; font-weight: bold; font-size: 14px;}
+        .pedal-grid { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; max-width: 1200px; }
+        .pedal { background: #333; border-radius: 8px; width: 140px; padding: 15px; border-top: 4px solid #555; text-align: center; position: relative;}
+        .pedal.off { opacity: 0.4; }
+        .pedal-name { font-weight: bold; font-size: 14px; margin-bottom: 5px; }
+        .pedal-val { font-size: 10px; color: #aaa; margin-top: 5px; }
+        .loading { display: none; color: var(--accent); margin-bottom: 20px; }
+        .pedal.PRE { border-color: #66bb6a; background: #2e7d32; } .pedal.DST { border-color: #ffa726; background: #ef6c00; }
+        .pedal.AMP { border-color: #444; background: #212121; width: 180px; } .pedal.CAB { border-color: #795548; background: #4e342e; }
+        .pedal.EQ { border-color: #42a5f5; background: #1565c0; } .pedal.MOD { border-color: #ab47bc; background: #7b1fa2; }
+        .pedal.DLY { border-color: #26c6da; background: #00838f; } .pedal.REV { border-color: #5c6bc0; background: #283593; }
+    </style>
+</head>
+<body>
+    <div id="gatekeeper">
+        <h1 style="margin-bottom: 20px;">L&R RESEARCH</h1>
+        <input type="password" id="sitePass" placeholder="Enter Password">
+        <button onclick="unlockSite()" style="margin-top: 15px;">UNLOCK</button>
+    </div>
+    <div id="app" class="hidden">
+        <h1>GP-5 PRESETINATOR</h1>
+        <div class="control-bar">
+            <input type="text" id="songInput" placeholder="Enter Song or Artist">
+            <button onclick="generatePatch()" id="btn">GENERATE</button>
+            <a href="#" id="sheetLink" target="_blank" class="archive-btn">📂 ARCHIVE</a>
+        </div>
+        <div class="loading" id="loader">Accessing Secure Server...</div>
+        <div class="pedal-grid" id="pedalboard"></div>
+    </div>
+    <script>
+        // --- PASTE YOUR SHEET SHARE LINK BELOW ---
+        const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1AlEC91nxYwHsRfuDXJU2FACrGA4C7RF_EURKrGXA4bw/edit?usp=sharing";
+
+        document.getElementById('sheetLink').href = GOOGLE_SHEET_URL;
+        function unlockSite() {
+            const pass = document.getElementById('sitePass').value;
+            if(pass) { localStorage.setItem('gp5_pass', pass); document.getElementById('gatekeeper').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); }
+        }
+        if(localStorage.getItem('gp5_pass')) { document.getElementById('gatekeeper').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); }
+
+        async function generatePatch() {
+            const song = document.getElementById('songInput').value;
+            const password = localStorage.getItem('gp5_pass'); 
+            if(!song) return alert("Enter a song!");
+            document.getElementById('loader').style.display = 'block'; document.getElementById('btn').disabled = true; document.getElementById('pedalboard').innerHTML = '';
+            try {
+                const response = await fetch('/.netlify/functions/generate', { method: 'POST', body: JSON.stringify({ song: song, password: password }) });
+                const data = await response.json();
+                if (response.status === 401) { localStorage.removeItem('gp5_pass'); location.reload(); throw new Error(data.error); }
+                if (data.error) throw new Error(data.error);
+                renderBoard(JSON.parse(data.json));
+            } catch (e) { alert(e.message); } finally { document.getElementById('loader').style.display = 'none'; document.getElementById('btn').disabled = false; }
+        }
+        function renderBoard(data) {
+            const board = document.getElementById('pedalboard');
+            const pedals = [
+                { id: 'PRE', name: 'PRE-AMP', type: 'PRE', params: data.PRE }, { id: 'DST', name: 'DISTORTION', type: 'DST', params: data.DST },
+                { id: 'AMP', name: 'AMPLIFIER', type: 'AMP', params: data.AMP }, { id: 'CAB', name: 'CABINET', type: 'CAB', params: data.CAB },
+                { id: 'EQ',  name: 'EQ-7', type: 'EQ', params: data.EQ }, { id: 'MOD', name: 'MODULATION', type: 'MOD', params: data.MOD },
+                { id: 'DLY', name: 'DELAY', type: 'DLY', params: data.DLY }, { id: 'REV', name: 'REVERB', type: 'REV', params: data.REV }
+            ];
+            pedals.forEach(p => {
+                const div = document.createElement('div');
+                div.className = `pedal ${p.type} ${p.params.Status === "On" ? '' : 'off'}`;
+                div.innerHTML = `<div class="pedal-name">${p.name}</div><div>${p.params.Model || ""}</div>`;
+                for (const [k, v] of Object.entries(p.params)) { if(k !== "Status" && k !== "Model") div.innerHTML += `<div class="pedal-val">${k}: ${v}</div>`; }
+                board.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>
