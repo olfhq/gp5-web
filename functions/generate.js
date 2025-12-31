@@ -19,23 +19,27 @@ export async function onRequest(context) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
-    // UPDATED: Using /v1 stable and gemini-1.5-flash explicitly
-    const apiURL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+    // UPDATED: Using the absolute newest stable model ID
+    const modelId = "gemini-2.5-flash"; 
+    const apiURL = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${env.GEMINI_API_KEY}`;
 
     const genRes = await fetch(apiURL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `Create a professional guitar JSON preset for: "${body.song}". RAW JSON ONLY.` }] }]
+        contents: [{ parts: [{ text: `Generate a guitar JSON preset for: "${body.song}". RAW JSON ONLY.` }] }]
       })
     });
 
     const data = await genRes.json();
 
-    // 3. SAFETY CHECK: Fixes "reading '0'" error
+    // 3. Detailed Error Logging
+    if (data.error) {
+      throw new Error(`Google API: ${data.error.message} (Code: ${data.error.code})`);
+    }
+
     if (!data.candidates || data.candidates.length === 0) {
-      const errorDetail = data.error ? data.error.message : "AI returned no content.";
-      throw new Error(`AI Error: ${errorDetail}`);
+      throw new Error("AI returned no results. This can happen if the prompt is flagged or model is busy.");
     }
 
     const rawText = data.candidates[0].content.parts[0].text.replace(/```json/g, "").replace(/```/g, "").trim();
@@ -51,6 +55,7 @@ export async function onRequest(context) {
     return new Response(JSON.stringify({ json: rawText }), { status: 200 });
 
   } catch (error) {
+    // This sends the SPECIFIC error message to your browser alert
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 }
